@@ -32,10 +32,10 @@ trait NextParams extends CacheParams {
   def nHart: Int
   def nCbo: Int
 
-  def useDome: Boolean
-  def nDome: Int
+  def useField: Boolean
+  def nField: Int
   def nPart: Int
-  def multiDome: Boolean
+  def multiField: Boolean
 
   def nPrevDataByte: Int
   def nPrevDataBit: Int = nPrevDataByte * 8
@@ -69,9 +69,9 @@ trait NextParams extends CacheParams {
     nAddrBit = nAddrBit,
     useAmo = false,
     nDataByte = nNextDataByte,
-    useDome =  useDome,
-    nDome = nDome,
-    multiDome = multiDome
+    useField =  useField,
+    nField = nField,
+    multiField = multiField
   )
 }
 
@@ -84,9 +84,9 @@ case class NextConfig (
   nHart: Int,
   nCbo: Int,
 
-  useDome: Boolean,
-  nDome: Int,
-  multiDome: Boolean,
+  useField: Boolean,
+  nField: Int,
+  multiField: Boolean,
   nPart: Int,
 
   nPrevDataByte: Int,

@@ -3,7 +3,7 @@
  * Created Date: 2023-02-25 04:11:31 pm                                        *
  * Author: Mathieu Escouteloup                                                 *
  * -----                                                                       *
- * Last Modified: 2023-02-25 09:40:29 pm                                       *
+ * Last Modified: 2023-03-02 01:40:37 pm                                       *
  * Modified By: Mathieu Escouteloup                                            *
  * -----                                                                       *
  * License: See LICENSE.md                                                     *
@@ -20,7 +20,7 @@ import chisel3.util._
 
 import herd.common.gen._
 import herd.common.tools._
-import herd.common.dome._
+import herd.common.field._
 import herd.common.mem.mb4s._
 import herd.common.mem.cbo.{OP => CBOOP, BLOCK => CBOBLOCK}
 import herd.mem.hay.common._
@@ -29,10 +29,10 @@ import herd.mem.hay.cache._
 
 class Ctrl (p: PftchParams) extends Module {
   val io = IO(new Bundle {
-    val b_dome = if (p.useDome) Some(Vec(p.nDome, new DomeIO(p.nAddrBit, p.nDataBit))) else None
-    val b_part = if (p.useDome) Some(new NRsrcIO(1, p.nDome, p.nPart)) else None
+    val b_field = if (p.useField) Some(Vec(p.nField, new FieldIO(p.nAddrBit, p.nDataBit))) else None
+    val b_part = if (p.useField) Some(new NRsrcIO(1, p.nField, p.nPart)) else None
 
-    val b_cbo = Vec(p.nCbo, Flipped(new CboIO(p.nHart, p.useDome, p.nDome, p.nTagBit, p.nSet)))
+    val b_cbo = Vec(p.nCbo, Flipped(new CboIO(p.nHart, p.useField, p.nField, p.nTagBit, p.nSet)))
 
     val i_miss = Input(Vec(p.nPrevPort, new MissBus(p, p.nHart)))
 
@@ -60,9 +60,9 @@ class Ctrl (p: PftchParams) extends Module {
   // ******************************
   //        RESOURCE STATUS
   // ******************************
-  val m_entry = if (p.useDome) Some(Module(new Part2Rsrc(1, p.nDome, p.nPart, p.nPftchEntry))) else None
+  val m_entry = if (p.useField) Some(Module(new Part2Rsrc(1, p.nField, p.nPart, p.nPftchEntry))) else None
 
-  if (p.useDome) {
+  if (p.useField) {
     m_entry.get.io.b_part <> io.b_part.get
   }
 
@@ -135,8 +135,8 @@ class Ctrl (p: PftchParams) extends Module {
   // ------------------------------  
   for (pp <- 0 until p.nPrevPort) {
     for (pe <- 0 until p.nPftchEntry) {
-      if (p.useDome) {
-        when (io.i_miss(pp).valid & (io.i_miss(pp).dome.get === m_entry.get.io.b_rsrc.state(pe).dome)) {
+      if (p.useField) {
+        when (io.i_miss(pp).valid & (io.i_miss(pp).field.get === m_entry.get.io.b_rsrc.state(pe).field)) {
           r_entry(pe).old := true.B
         }
       } else {
@@ -167,8 +167,8 @@ class Ctrl (p: PftchParams) extends Module {
   val w_fetch_entry = Wire(UInt(log2Ceil(p.nPftchEntry).W))
   
   for (pe <- 0 until p.nPftchEntry) {
-    if (p.useDome) {
-      w_fetch_valid(pe) := ~w_flush(pe) & m_entry.get.io.b_rsrc.state(pe).valid & (io.b_fetch.dome.get === m_entry.get.io.b_rsrc.state(pe).dome)
+    if (p.useField) {
+      w_fetch_valid(pe) := ~w_flush(pe) & m_entry.get.io.b_rsrc.state(pe).valid & (io.b_fetch.field.get === m_entry.get.io.b_rsrc.state(pe).field)
     } else {
       w_fetch_valid(pe) := ~w_flush(pe)
     }
@@ -207,8 +207,8 @@ class Ctrl (p: PftchParams) extends Module {
   val w_move_entry = Wire(UInt(log2Ceil(p.nPftchEntry).W))
 
   for (pe <- 0 until p.nPftchEntry) {
-    if (p.useDomeSlct) {
-      w_move_valid(pe) := ~w_flush(pe) & m_entry.get.io.b_rsrc.state(pe).valid & (io.b_move.dome.get === m_entry.get.io.b_rsrc.state(pe).dome)
+    if (p.useFieldSlct) {
+      w_move_valid(pe) := ~w_flush(pe) & m_entry.get.io.b_rsrc.state(pe).valid & (io.b_move.field.get === m_entry.get.io.b_rsrc.state(pe).field)
     } else {
       w_move_valid(pe) := ~w_flush(pe)
     }
@@ -221,7 +221,7 @@ class Ctrl (p: PftchParams) extends Module {
   io.b_move.used := w_move_used.asUInt.orR
   io.b_move.entry := w_move_entry
   io.b_move.tag := r_entry(w_move_entry).tag
-  if (p.useDomeTag) io.b_move.dome.get := m_entry.get.io.b_rsrc.state(w_move_entry).dome
+  if (p.useFieldTag) io.b_move.field.get := m_entry.get.io.b_rsrc.state(w_move_entry).field
 
   when (io.b_move.valid) {
     w_move(w_move_entry) := true.B
@@ -238,8 +238,8 @@ class Ctrl (p: PftchParams) extends Module {
   // Entry status
   for (pp <- 0 until p.nPrevPort) {
     for (pe <- 0 until p.nPftchEntry) {
-      if (p.useDome) {
-        w_acc_valid(pp)(pe) := ~w_flush(pe) & m_entry.get.io.b_rsrc.state(pe).valid & (io.b_acc(pp).dome.get === m_entry.get.io.b_rsrc.state(pp).dome)
+      if (p.useField) {
+        w_acc_valid(pp)(pe) := ~w_flush(pe) & m_entry.get.io.b_rsrc.state(pe).valid & (io.b_acc(pp).field.get === m_entry.get.io.b_rsrc.state(pp).field)
       } else {
         w_acc_valid(pp)(pe) := ~w_flush(pe) 
       } 
@@ -292,8 +292,8 @@ class Ctrl (p: PftchParams) extends Module {
     w_cbo_entry(c) := 0.U
 
     for (pe <- 0 until p.nPftchEntry) {
-      if (p.useDome) {
-        w_cbo_av(c)(pe) := io.b_cbo(c).valid & m_entry.get.io.b_rsrc.state(pe).valid & (io.b_cbo(c).dome.get === m_entry.get.io.b_rsrc.state(pe).dome) 
+      if (p.useField) {
+        w_cbo_av(c)(pe) := io.b_cbo(c).valid & m_entry.get.io.b_rsrc.state(pe).valid & (io.b_cbo(c).field.get === m_entry.get.io.b_rsrc.state(pe).field) 
       } else {
         w_cbo_av(c)(pe) := io.b_cbo(c).valid
       }
@@ -335,11 +335,11 @@ class Ctrl (p: PftchParams) extends Module {
   }
 
   // ******************************
-  //             DOME
+  //            FIELD
   // ******************************
-  if (p.useDome) {
-    for (d <- 0 until p.nDome) {
-      io.b_dome.get(d).free := true.B
+  if (p.useField) {
+    for (f <- 0 until p.nField) {
+      io.b_field.get(f).free := true.B
     }
 
     for (pe <- 0 until p.nPftchEntry) {
@@ -351,7 +351,7 @@ class Ctrl (p: PftchParams) extends Module {
   //             FLUSH
   // ******************************
   for (pe <- 0 until p.nPftchEntry) {
-    if (p.useDome) w_flush(pe) := m_entry.get.io.b_rsrc.state(pe).flush else w_flush(pe) := false.B
+    if (p.useField) w_flush(pe) := m_entry.get.io.b_rsrc.state(pe).flush else w_flush(pe) := false.B
 
     for (c <- 0 until p.nCbo) {
       when ((io.b_cbo(c).op === CBOOP.INVAL) | (io.b_cbo(c).op === CBOOP.FLUSH)) {

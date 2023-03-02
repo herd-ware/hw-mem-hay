@@ -32,9 +32,9 @@ trait DependParams extends CacheParams {
   def nAddrBit: Int
   def nCbo: Int
   
-  def useDome: Boolean
-  def nDome: Int
-  def multiDome: Boolean
+  def useField: Boolean
+  def nField: Int
+  def multiField: Boolean
   def nPart: Int
 
   def nAccess: Int
@@ -71,9 +71,9 @@ trait PrevUnitParams extends DependParams {
   def nOpBit: Int = pPrevBus.nOpBit
   def nCbo: Int 
 
-  def useDome: Boolean = pPrevBus.useDome
-  def nDome: Int = pPrevBus.nDome
-  def multiDome: Boolean = pPrevBus.multiDome
+  def useField: Boolean = pPrevBus.useField
+  def nField: Int = pPrevBus.nField
+  def multiField: Boolean = pPrevBus.multiField
   def nPart: Int = 1
 
   def nPrevDataByte: Int = pPrevBus.nDataByte
@@ -99,9 +99,9 @@ trait PrevUnitParams extends DependParams {
   def nReadPort: Int = 1
   def nWritePort: Int = if (!readOnly) 1 else 0
   def nPendingAcc: Int = {
-    var pa: Int = nDomeSlct
-    if (useAccReg) pa = pa + nDomeSlct
-    if (useAckReg && !readOnly) pa = pa + nDomeSlct
+    var pa: Int = nFieldSlct
+    if (useAccReg) pa = pa + nFieldSlct
+    if (useAckReg && !readOnly) pa = pa + nFieldSlct
     return pa
   }
   def nMem: Int
@@ -191,39 +191,39 @@ trait PrevParams extends DependParams {
   }
   def nCbo: Int 
 
-  def useDome: Boolean = {
-    var use: Boolean = pPrevBus(0).useDome
+  def useField: Boolean = {
+    var use: Boolean = pPrevBus(0).useField
     for (prev <- pPrevBus) {
-      require((prev.useDome == use), "All the previous memories must use domes to allow its support.")
+      require((prev.useField == use), "All the previous memories must use fields to allow its support.")
     }
     return use
   }
-  def nDome: Int = {
-    var ndome: Int = pPrevBus(0).nDome
+  def nField: Int = {
+    var nfield: Int = pPrevBus(0).nField
     for (prev <- pPrevBus) {
-      if (prev.nDome > ndome) {
-        ndome = prev.nDome
+      if (prev.nField > nfield) {
+        nfield = prev.nField
       }
     }
-    return ndome
+    return nfield
   }
   def nPart: Int
-  def multiDome: Boolean
-  override def useDomeTag: Boolean = {
+  def multiField: Boolean
+  override def useFieldTag: Boolean = {
     for (prev <- pPrevBus) {
-      if (prev.useDomeSlct) {
+      if (prev.useFieldSlct) {
         return false
       }
     }
-    return (useDome && !multiDome)    
+    return (useField && !multiField)    
   }
-  override def useDomeSlct: Boolean = {
+  override def useFieldSlct: Boolean = {
     for (prev <- pPrevBus) {
-      if (prev.useDomeSlct) {
+      if (prev.useFieldSlct) {
         return true
       }
     }
-    return (useDome && multiDome)  
+    return (useField && multiField)  
   }
 
   def nPrevDataByte: Int = {
@@ -259,9 +259,9 @@ trait PrevParams extends DependParams {
   def nPendingAcc: Int = {    
     var pa: Int = 0
     for (prev <- pPrevBus) {
-      pa = pa + prev.nDomeSlct
-      if (useAccReg) pa = pa + prev.nDomeSlct
-      if (useAckReg && !readOnly) pa = pa + prev.nDomeSlct
+      pa = pa + prev.nFieldSlct
+      if (useAccReg) pa = pa + prev.nFieldSlct
+      if (useAckReg && !readOnly) pa = pa + prev.nFieldSlct
     }
     return pa
   }
@@ -311,7 +311,7 @@ case class PrevConfig (
   debug: Boolean,
   nCbo: Int,
 
-  multiDome: Boolean,
+  multiField: Boolean,
   nPart: Int,
 
   nNextDataByte: Int,

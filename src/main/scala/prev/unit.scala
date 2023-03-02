@@ -3,7 +3,7 @@
  * Created Date: 2023-02-25 04:11:31 pm                                        *
  * Author: Mathieu Escouteloup                                                 *
  * -----                                                                       *
- * Last Modified: 2023-02-25 09:41:12 pm                                       *
+ * Last Modified: 2023-03-02 01:45:33 pm                                       *
  * Modified By: Mathieu Escouteloup                                            *
  * -----                                                                       *
  * License: See LICENSE.md                                                     *
@@ -19,7 +19,7 @@ import chisel3._
 import chisel3.util._
 
 import herd.common.gen._
-import herd.common.dome._
+import herd.common.field._
 import herd.common.tools._
 import herd.common.mem.mb4s._
 import herd.mem.hay.common._
@@ -30,20 +30,20 @@ import herd.mem.hay.pftch.{PftchAccIO, PftchReadIO, PftchWriteIO}
 
 class PrevUnit (p: PrevUnitParams) extends Module {
   val io = IO(new Bundle {
-    val b_dome = if (p.useDome) Some(Vec(p.nDome, new DomeIO(p.nAddrBit, p.nDataBit))) else None
-    val b_cbo = Vec(p.nCbo, Flipped(new CboIO(p.nHart, p.useDome, p.nDome, p.nTagBit, p.nSet)))
+    val b_field = if (p.useField) Some(Vec(p.nField, new FieldIO(p.nAddrBit, p.nDataBit))) else None
+    val b_cbo = Vec(p.nCbo, Flipped(new CboIO(p.nHart, p.useField, p.nField, p.nTagBit, p.nSet)))
 
-    val i_slct = if (p.useDomeSlct) Some(Input(new SlctBus(p.nDome, p.nPart, 1))) else None
+    val i_slct = if (p.useFieldSlct) Some(Input(new SlctBus(p.nField, p.nPart, 1))) else None
     val b_port = Flipped(new Mb4sIO(p.pPrevBus))
-    val b_zero = if (!p.readOnly) Some(Flipped(Vec(p.nDomeTag, new ZeroIO(p)))) else None
+    val b_zero = if (!p.readOnly) Some(Flipped(Vec(p.nFieldTag, new ZeroIO(p)))) else None
 
-    val b_dep_back = Vec(p.nDomeSlct, new DependStageIO(p))
-    val b_dep_bus = Vec(p.nDomeSlct, new DependStageIO(p))
-    val b_dep_req = if (p.useReqReg) Some(Vec(p.nDomeSlct, new DependStageIO(p))) else None    
-    val b_dep_acc = if (p.useAccReg) Some(Vec(p.nDomeSlct, new DependStageIO(p))) else None
-    val i_dep_rw = Input(Vec(p.nDomeSlct, Bool()))
-    val b_dep_read = Vec(p.nDomeSlct, new DependStageIO(p))
-    val o_dep_ack = if (p.useAckReg && !p.readOnly) Some(Output(Vec(p.nDomeSlct, new DependRegBus(p)))) else None
+    val b_dep_back = Vec(p.nFieldSlct, new DependStageIO(p))
+    val b_dep_bus = Vec(p.nFieldSlct, new DependStageIO(p))
+    val b_dep_req = if (p.useReqReg) Some(Vec(p.nFieldSlct, new DependStageIO(p))) else None    
+    val b_dep_acc = if (p.useAccReg) Some(Vec(p.nFieldSlct, new DependStageIO(p))) else None
+    val i_dep_rw = Input(Vec(p.nFieldSlct, Bool()))
+    val b_dep_read = Vec(p.nFieldSlct, new DependStageIO(p))
+    val o_dep_ack = if (p.useAckReg && !p.readOnly) Some(Output(Vec(p.nFieldSlct, new DependRegBus(p)))) else None
 
     val b_cache_acc   = new CacheAccIO(p)
     val b_cache_rep   = new CacheRepIO(p)
@@ -75,10 +75,10 @@ class PrevUnit (p: PrevUnitParams) extends Module {
   // ******************************
   //             REQ
   // ******************************
-  if (p.useDome) m_req.io.b_dome.get <> io.b_dome.get
+  if (p.useField) m_req.io.b_field.get <> io.b_field.get
   m_req.io.b_cbo <> io.b_cbo
 
-  if (p.useDomeSlct) m_req.io.i_slct.get := io.i_slct.get
+  if (p.useFieldSlct) m_req.io.i_slct.get := io.i_slct.get
   m_req.io.b_port <> io.b_port.req  
   if (!p.readOnly) m_req.io.b_zero.get <> io.b_zero.get
 
@@ -89,10 +89,10 @@ class PrevUnit (p: PrevUnitParams) extends Module {
   // ******************************
   //             ACC
   // ******************************
-  if (p.useDome) m_acc.io.b_dome.get <> io.b_dome.get
+  if (p.useField) m_acc.io.b_field.get <> io.b_field.get
   m_acc.io.b_cbo <> io.b_cbo
 
-  if (p.useDomeSlct) m_acc.io.i_slct.get := m_req.io.o_slct.get
+  if (p.useFieldSlct) m_acc.io.i_slct.get := m_req.io.o_slct.get
   m_acc.io.b_in <> m_req.io.b_out
 
   if (p.useAccReg) m_acc.io.b_dep.get := io.b_dep_acc.get  
@@ -107,10 +107,10 @@ class PrevUnit (p: PrevUnitParams) extends Module {
   // ******************************
   //             READ
   // ******************************
-  if (p.useDome) m_read.io.b_dome.get <> io.b_dome.get
+  if (p.useField) m_read.io.b_field.get <> io.b_field.get
   m_read.io.b_cbo <> io.b_cbo
 
-  if (p.useDomeSlct) m_read.io.i_slct.get := m_acc.io.o_slct.get
+  if (p.useFieldSlct) m_read.io.i_slct.get := m_acc.io.o_slct.get
   m_read.io.b_in <> m_acc.io.b_out
 
   m_read.io.i_dep_rw <> io.i_dep_rw
@@ -122,10 +122,10 @@ class PrevUnit (p: PrevUnitParams) extends Module {
   // ******************************
   //              ACK
   // ******************************
-  if (p.useDome) m_ack.io.b_dome.get <> io.b_dome.get
+  if (p.useField) m_ack.io.b_field.get <> io.b_field.get
   m_ack.io.b_cbo <> io.b_cbo
 
-  if (p.useDomeSlct) m_ack.io.i_slct.get := m_read.io.o_slct.get
+  if (p.useFieldSlct) m_ack.io.i_slct.get := m_read.io.o_slct.get
   m_ack.io.b_in <> m_read.io.b_out  
 
   m_ack.io.b_port.read  <> io.b_port.read
@@ -138,7 +138,7 @@ class PrevUnit (p: PrevUnitParams) extends Module {
   //             WRITE
   // ******************************
   if (!p.readOnly) {
-    if (p.useDomeSlct) m_write.get.io.i_slct.get := m_read.io.o_slct.get
+    if (p.useFieldSlct) m_write.get.io.i_slct.get := m_read.io.o_slct.get
     m_write.get.io.b_in <> m_ack.io.b_out.get  
 
     if (!p.readOnly) {
@@ -151,23 +151,23 @@ class PrevUnit (p: PrevUnitParams) extends Module {
   //            PENDING
   // ******************************
   var pa: Int = 0
-  for (ds <- 0 until p.nDomeSlct) {
-    io.o_pend(ds) := m_read.io.o_pend(ds)
+  for (fs <- 0 until p.nFieldSlct) {
+    io.o_pend(fs) := m_read.io.o_pend(fs)
   }
-  pa = p.nDomeSlct
+  pa = p.nFieldSlct
 
   if (p.useAccReg) {
-    for (ds <- 0 until p.nDomeSlct) {
-      io.o_pend(pa + ds) := m_acc.io.o_pend.get(ds)
+    for (fs <- 0 until p.nFieldSlct) {
+      io.o_pend(pa + fs) := m_acc.io.o_pend.get(fs)
     }
-    pa = pa + p.nDomeSlct
+    pa = pa + p.nFieldSlct
   }
 
   if (p.useAckReg && !p.readOnly) {
-    for (ds <- 0 until p.nDomeSlct) {
-      io.o_pend(pa + ds) := m_ack.io.o_pend.get(ds)
+    for (fs <- 0 until p.nFieldSlct) {
+      io.o_pend(pa + fs) := m_ack.io.o_pend.get(fs)
     }
-    pa = pa + p.nDomeSlct
+    pa = pa + p.nFieldSlct
   }
 
   // ******************************
@@ -178,11 +178,11 @@ class PrevUnit (p: PrevUnitParams) extends Module {
   }
 
   // ******************************
-  //             DOME
+  //            FIELD
   // ******************************
-  if (p.useDome) {
-    for (d <- 0 until p.nDome) {
-      io.b_dome.get(d).free := m_req.io.b_dome.get(d).free & m_acc.io.b_dome.get(d).free & m_read.io.b_dome.get(d).free & m_ack.io.b_dome.get(d).free
+  if (p.useField) {
+    for (f <- 0 until p.nField) {
+      io.b_field.get(f).free := m_req.io.b_field.get(f).free & m_acc.io.b_field.get(f).free & m_read.io.b_field.get(f).free & m_ack.io.b_field.get(f).free
     }
   }
 }

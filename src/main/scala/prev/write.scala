@@ -19,7 +19,7 @@ import chisel3._
 import chisel3.util._
 
 import herd.common.gen._
-import herd.common.dome._
+import herd.common.field._
 import herd.common.tools._
 import herd.common.mem.mb4s._
 import herd.mem.hay.common._
@@ -29,7 +29,7 @@ import herd.mem.hay.pftch.{PftchWriteIO}
 
 class WriteStage(p: PrevUnitParams) extends Module {
   val io = IO(new Bundle {    
-    val i_slct = if (p.useDomeSlct) Some(Input(new SlctBus(p.nDome, p.nPart, 1))) else None
+    val i_slct = if (p.useFieldSlct) Some(Input(new SlctBus(p.nField, p.nPart, 1))) else None
     val b_in = Flipped(new GenSRVIO(p, new PrevUnitCtrlBus(p), new WriteDataBus(p)))
 
     val b_write = new CacheWriteIO(p)
@@ -47,14 +47,14 @@ class WriteStage(p: PrevUnitParams) extends Module {
   val w_wait_write = Wire(Bool())
 
   // ******************************
-  //         DOME INTERFACE
+  //        FIELD INTERFACE
   // ******************************
-  val w_slct_in = Wire(new SlctBus(p.nDome, p.nPart, 1))
+  val w_slct_in = Wire(new SlctBus(p.nField, p.nPart, 1))
 
-  if (p.useDomeSlct) {    
+  if (p.useFieldSlct) {    
     w_slct_in := io.i_slct.get
   } else {
-    w_slct_in.dome := 0.U
+    w_slct_in.field := 0.U
     w_slct_in.next := 0.U
     w_slct_in.step := 0.U
   }  
@@ -101,7 +101,7 @@ class WriteStage(p: PrevUnitParams) extends Module {
   } else {
     io.b_write.valid := io.b_in.valid & ~w_wait_alu
   }
-  if (p.useDomeSlct) io.b_write.dome.get := w_slct_in.dome else if (p.useDomeTag) io.b_write.dome.get := io.b_in.dome.get
+  if (p.useFieldSlct) io.b_write.field.get := w_slct_in.field else if (p.useFieldTag) io.b_write.field.get := io.b_in.field.get
   io.b_write.mask := io.b_in.ctrl.get.op.mask
   io.b_write.offset := io.b_in.ctrl.get.addr.offset
   io.b_write.mem := io.b_in.ctrl.get.addr.mem()
@@ -113,7 +113,7 @@ class WriteStage(p: PrevUnitParams) extends Module {
   // ------------------------------
   if (p.usePftch) {
     io.b_pftch.get.valid := io.b_in.valid & ~w_wait_alu & io.b_in.ctrl.get.pftch.get.use
-    if (p.useDomeSlct) io.b_pftch.get.dome.get := w_slct_in.dome else if (p.useDomeTag) io.b_pftch.get.dome.get := io.b_in.dome.get
+    if (p.useFieldSlct) io.b_pftch.get.field.get := w_slct_in.field else if (p.useFieldTag) io.b_pftch.get.field.get := io.b_in.field.get
     io.b_pftch.get.mask := io.b_in.ctrl.get.op.mask
     io.b_pftch.get.entry := io.b_in.ctrl.get.pftch.get.entry
     io.b_pftch.get.data := io.b_in.ctrl.get.addr.data

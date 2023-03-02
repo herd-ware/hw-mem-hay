@@ -69,11 +69,11 @@ class AddrBus (p: CacheParams) extends Bundle {
 // ******************************
 //              CBO
 // ******************************
-class CboIO (nHart: Int, useDome: Boolean, nDome: Int, nTagBit: Int, nSet: Int) extends Bundle {
+class CboIO (nHart: Int, useField: Boolean, nField: Int, nTagBit: Int, nSet: Int) extends Bundle {
   val ready = Input(Bool())
   val valid = Output(Bool())
   val hart = Output(UInt(log2Ceil(nHart).W))
-  val dome = if (useDome) Some(Output(UInt(log2Ceil(nDome).W))) else None
+  val field = if (useField) Some(Output(UInt(log2Ceil(nField).W))) else None
   val op = Output(UInt(OP.NBIT.W))
   val sort = Output(UInt(SORT.NBIT.W))
   val block = Output(UInt(BLOCK.NBIT.W))
@@ -83,7 +83,7 @@ class CboIO (nHart: Int, useDome: Boolean, nDome: Int, nTagBit: Int, nSet: Int) 
   def fromGlob (glob: GlobCboIO, nAddrBit: Int) = {
     valid := glob.valid
     hart := glob.hart
-    if (useDome) dome.get := glob.dome.get
+    if (useField) field.get := glob.field.get
     op := glob.op
     sort := glob.sort
     block := glob.block
@@ -103,7 +103,7 @@ class CboIO (nHart: Int, useDome: Boolean, nDome: Int, nTagBit: Int, nSet: Int) 
 class MissBus(p: CacheParams, nHart: Int) extends Bundle {
   val valid = Bool()
   val hart = UInt(log2Ceil(nHart).W)
-  val dome = if (p.useDome) Some(UInt(log2Ceil(p.nDome).W)) else None
+  val field = if (p.useField) Some(UInt(log2Ceil(p.nField).W)) else None
   val addr = new AddrBus(p)
 }
 

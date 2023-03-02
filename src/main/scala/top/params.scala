@@ -72,40 +72,40 @@ trait HayParams extends PrevParams
   def nCbo: Int 
 
   // ------------------------------
-  //         DOME PARAMETERS
+  //        FIELD PARAMETERS
   // ------------------------------
-  override def useDome: Boolean = {
-    var use: Boolean = pPrevBus(0).useDome
+  override def useField: Boolean = {
+    var use: Boolean = pPrevBus(0).useField
     for (prev <- pPrevBus) {
-      require((prev.useDome == use), "All the previous memories must use domes to allow its support.")
+      require((prev.useField == use), "All the previous memories must use fields to allow its support.")
     }
     return use
   }
-  override def nDome: Int = {
-    var ndome: Int = pPrevBus(0).nDome
+  override def nField: Int = {
+    var nfield: Int = pPrevBus(0).nField
     for (prev <- pPrevBus) {
-      if (prev.nDome > ndome) {
-        ndome = prev.nDome
+      if (prev.nField > nfield) {
+        nfield = prev.nField
       }
     }
-    return ndome
+    return nfield
   }
-  def multiDome: Boolean
-  override def useDomeTag: Boolean = {
+  def multiField: Boolean
+  override def useFieldTag: Boolean = {
     for (prev <- pPrevBus) {
-      if (prev.useDomeSlct) {
+      if (prev.useFieldSlct) {
         return false
       }
     }
-    return (useDome && !multiDome)    
+    return (useField && !multiField)    
   }
-  override def useDomeSlct: Boolean = {
+  override def useFieldSlct: Boolean = {
     for (prev <- pPrevBus) {
-      if (prev.useDomeSlct) {
+      if (prev.useFieldSlct) {
         return true
       }
     }
-    return (useDome && multiDome)  
+    return (useField && multiField)  
   }
   def nPart: Int
 
@@ -141,9 +141,9 @@ trait HayParams extends PrevParams
   override def nPendingAcc: Int = {    
     var pa: Int = 0
     for (prev <- pPrevBus) {
-      pa = pa + prev.nDomeSlct
-      if (useAccReg) pa = pa + prev.nDomeSlct
-      if (useAckReg && !readOnly) pa = pa + prev.nDomeSlct
+      pa = pa + prev.nFieldSlct
+      if (useAccReg) pa = pa + prev.nFieldSlct
+      if (useAckReg && !readOnly) pa = pa + prev.nFieldSlct
     }
     return pa
   }
@@ -186,9 +186,9 @@ trait HayParams extends PrevParams
     nAddrBit = nAddrBit,
     useAmo = false,
     nDataByte = nNextDataByte,
-    useDome =  useDome,
-    nDome = nDome,
-    multiDome = multiDome    
+    useField =  useField,
+    nField = nField,
+    multiField = multiField    
   )
 
   def pMux: Mb4sCrossbarParams = new Mb4sCrossbarConfig (
@@ -199,7 +199,7 @@ trait HayParams extends PrevParams
     nBus = 1,
 
     debug = debug,
-    multiDome = multiDome,
+    multiField = multiField,
     nDepth = nNextFifoDepth,
     useDirect = false
   )
@@ -221,9 +221,9 @@ case class HayConfig (
   pPrevBus: Array[Mb4sParams],
 
   // ------------------------------
-  //         DOME PARAMETERS
+  //        FIELD PARAMETERS
   // ------------------------------
-  multiDome: Boolean,
+  multiField: Boolean,
   nPart: Int,
 
   // ------------------------------

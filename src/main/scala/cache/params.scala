@@ -53,9 +53,9 @@ trait CacheParams extends GenParams {
   def nHart: Int
   def nCbo: Int
 
-  def useDome: Boolean
-  def nDome: Int
-  def multiDome: Boolean
+  def useField: Boolean
+  def nField: Int
+  def multiField: Boolean
   def nPart: Int
 
   def nAccess: Int
@@ -91,9 +91,9 @@ case class CacheConfig (
   nHart: Int,
   nCbo: Int,
 
-  useDome: Boolean,
-  nDome: Int,
-  multiDome: Boolean,
+  useField: Boolean,
+  nField: Int,
+  multiField: Boolean,
   nPart: Int,
 
   nAccess: Int,

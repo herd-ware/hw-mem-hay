@@ -43,9 +43,9 @@ object HayConfigBase extends HayConfig (
       useAmo = false,
       nDataByte = 4,
 
-      useDome = true,
-      nDome = 2,
-      multiDome = true
+      useField = true,
+      nField = 2,
+      multiField = true
     ),
     Mb4sConfig (
       debug = true,
@@ -55,16 +55,16 @@ object HayConfigBase extends HayConfig (
       useAmo = false,
       nDataByte = 4,
   
-      useDome = true,
-      nDome = 2,
-      multiDome = true
+      useField = true,
+      nField = 2,
+      multiField = true
     )
   ),
 
   // ------------------------------
-  //         DOME PARAMETERS
+  //        FIELD PARAMETERS
   // ------------------------------
-  multiDome = true,
+  multiField = true,
   nPart = 2,
 
   // ------------------------------

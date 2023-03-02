@@ -120,7 +120,7 @@ class DependRegBus (p: DependParams) extends Bundle {
   val valid = Bool()
   val lock = Bool()
   val hart = UInt(log2Ceil(p.nHart).W)
-  val dome = if (p.useDome) Some(UInt(log2Ceil(p.nDome).W)) else None
+  val field = if (p.useField) Some(UInt(log2Ceil(p.nField).W)) else None
   val rw = Bool()
   val addr = new AddrBus(p)
   val pftch = if (p.usePftch) Some(new PrefetcherBus(p.nPftchEntry)) else None

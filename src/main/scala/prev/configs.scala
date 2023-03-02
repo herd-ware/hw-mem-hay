@@ -33,9 +33,9 @@ object PrevUnitConfigBase extends PrevUnitConfig (
     useAmo = false,
     nDataByte = 4,
 
-    useDome = false,
-    nDome = 2,
-    multiDome = true
+    useField = false,
+    nField = 2,
+    multiField = true
   ),
   
   debug = true,
@@ -70,9 +70,9 @@ object PrevConfigBase extends PrevConfig (
       useAmo = false,
       nDataByte = 4,
 
-      useDome = false,
-      nDome = 2,
-      multiDome = true
+      useField = false,
+      nField = 2,
+      multiField = true
     ),
     Mb4sConfig (
       debug = true,
@@ -82,16 +82,16 @@ object PrevConfigBase extends PrevConfig (
       useAmo = false,
       nDataByte = 4,
   
-      useDome = false,
-      nDome = 2,
-      multiDome = true
+      useField = false,
+      nField = 2,
+      multiField = true
     )
   ),
 
   debug = true,
   nCbo = 1,
 
-  multiDome = true,
+  multiField = true,
   nPart = 1,
 
   nNextDataByte = 8,

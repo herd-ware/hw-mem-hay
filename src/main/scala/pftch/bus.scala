@@ -28,7 +28,7 @@ import herd.mem.hay.prev._
 // ******************************
 //             I/Os
 // ******************************
-class PftchAccIO(p: CacheParams, nPftchEntry: Int) extends FlatSRVIO(p.useDome, p.nDome) {
+class PftchAccIO(p: CacheParams, nPftchEntry: Int) extends FlatSRVIO(p.useField, p.nField) {
   val hart = Output(UInt(log2Ceil(p.nHart).W))
   val rw = Output(Bool())
   val check = Output(Bool())
@@ -40,7 +40,7 @@ class PftchAccIO(p: CacheParams, nPftchEntry: Int) extends FlatSRVIO(p.useDome, 
   val entry = Input(UInt(log2Ceil(nPftchEntry).W))
 }
 
-class PftchReadIO(p: CacheParams, nPftchEntry: Int) extends FlatSRVIO(p.useDome, p.nDome) {
+class PftchReadIO(p: CacheParams, nPftchEntry: Int) extends FlatSRVIO(p.useField, p.nField) {
   val mask = Output(UInt(p.nDataByte.W))
   val entry = Output(UInt(log2Ceil(nPftchEntry).W))
   val data = Output(UInt(log2Ceil(p.nData).W))
@@ -49,7 +49,7 @@ class PftchReadIO(p: CacheParams, nPftchEntry: Int) extends FlatSRVIO(p.useDome,
   val rdata = Input(Vec(p.nDataByte, UInt(8.W)))
 }
 
-class PftchWriteIO(p: CacheParams, nPftchEntry: Int) extends FlatSRVIO(p.useDome, p.nDome) {
+class PftchWriteIO(p: CacheParams, nPftchEntry: Int) extends FlatSRVIO(p.useField, p.nField) {
   val mask = Output(UInt(p.nDataByte.W))
   val entry = Output(UInt(log2Ceil(nPftchEntry).W))
   val data = Output(UInt(log2Ceil(p.nData).W))
@@ -59,7 +59,7 @@ class PftchWriteIO(p: CacheParams, nPftchEntry: Int) extends FlatSRVIO(p.useDome
 
 class PftchFetchIO(p: PftchParams) extends Bundle {
   val valid = Output(Bool())
-  val dome = if (p.useDome) Some(Output(UInt(log2Ceil(p.nDome).W))) else None
+  val field = if (p.useField) Some(Output(UInt(log2Ceil(p.nField).W))) else None
   val tag = Output(UInt(p.nPftchTagBit.W))
 
   val ready = Input(Bool())
@@ -69,10 +69,10 @@ class PftchFetchIO(p: PftchParams) extends Bundle {
 
 class PftchMoveIO(p: PftchParams) extends Bundle {
   val valid = Output(Bool())
-  val dome = if (p.useDomeSlct) {
-    Some(Output(UInt(log2Ceil(p.nDome).W)))
-   } else if (p.useDomeTag) {
-    Some(Input(UInt(log2Ceil(p.nDome).W))) 
+  val field = if (p.useFieldSlct) {
+    Some(Output(UInt(log2Ceil(p.nField).W)))
+   } else if (p.useFieldTag) {
+    Some(Input(UInt(log2Ceil(p.nField).W))) 
    } else None
   
   val ready = Input(Bool())

@@ -28,7 +28,7 @@ import herd.mem.hay.prev._
 // ******************************
 //             I/Os
 // ******************************
-class NextCtrlIO (p: CacheParams, nHart: Int) extends FlatSRVIO(p.useDome, p.nDome) {
+class NextCtrlIO (p: CacheParams, nHart: Int) extends FlatSRVIO(p.useField, p.nField) {
   val hart = Output(UInt(log2Ceil(nHart).W))
   val rw = Output(Bool())
   val size = Output(UInt(SIZE.NBIT.W))

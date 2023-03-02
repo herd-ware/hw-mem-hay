@@ -3,7 +3,7 @@
  * Created Date: 2023-02-25 04:11:31 pm                                        *
  * Author: Mathieu Escouteloup                                                 *
  * -----                                                                       *
- * Last Modified: 2023-02-25 09:40:50 pm                                       *
+ * Last Modified: 2023-03-02 01:45:05 pm                                       *
  * Modified By: Mathieu Escouteloup                                            *
  * -----                                                                       *
  * License: See LICENSE.md                                                     *
@@ -21,7 +21,7 @@ import chisel3.experimental.ChiselEnum
 
 import herd.common.gen._
 import herd.common.tools._
-import herd.common.dome._
+import herd.common.field._
 import herd.common.mem.mb4s._
 import herd.mem.hay.common._
 import herd.mem.hay.cache._
@@ -37,10 +37,10 @@ class AccStage (p: PrevUnitParams) extends Module {
   import herd.mem.hay.prev.AccStageFSM._
 
   val io = IO(new Bundle {
-    val b_dome = if (p.useDome) Some(Vec(p.nDome, new DomeIO(p.nAddrBit, p.nDataBit))) else None
-    val b_cbo = Vec(p.nCbo, Flipped(new CboIO(p.nHart, p.useDome, p.nDome, p.nTagBit, p.nSet)))
+    val b_field = if (p.useField) Some(Vec(p.nField, new FieldIO(p.nAddrBit, p.nDataBit))) else None
+    val b_cbo = Vec(p.nCbo, Flipped(new CboIO(p.nHart, p.useField, p.nField, p.nTagBit, p.nSet)))
 
-    val i_slct = if (p.useDomeSlct) Some(Input(new SlctBus(p.nDome, p.nPart, 1))) else None
+    val i_slct = if (p.useFieldSlct) Some(Input(new SlctBus(p.nField, p.nPart, 1))) else None
     val b_in =  Flipped(new GenSRVIO(p, new PrevUnitCtrlBus(p), UInt(0.W)))
 
     val b_acc = new CacheAccIO(p)
@@ -51,10 +51,10 @@ class AccStage (p: PrevUnitParams) extends Module {
     val b_next = new NextCtrlIO(p, p.nHart)
     val o_miss = Output(new MissBus(p, p.nHart))
 
-    val b_dep = if (p.useAccReg) Some(Vec(p.nDomeSlct, new DependStageIO(p))) else None
-    val o_pend = if (p.useAccReg) Some(Output(Vec(p.nDomeSlct, new CachePendBus(p)))) else None
+    val b_dep = if (p.useAccReg) Some(Vec(p.nFieldSlct, new DependStageIO(p))) else None
+    val o_pend = if (p.useAccReg) Some(Output(Vec(p.nFieldSlct, new CachePendBus(p)))) else None
   
-    val o_slct = if (p.useDomeSlct) Some(Output(new SlctBus(p.nDome, p.nPart, 1))) else None  
+    val o_slct = if (p.useFieldSlct) Some(Output(new SlctBus(p.nField, p.nPart, 1))) else None  
     val b_out = new GenSRVIO(p, new PrevUnitCtrlBus(p), UInt(0.W))
   })
 
@@ -63,7 +63,7 @@ class AccStage (p: PrevUnitParams) extends Module {
   // ******************************
   //            STATUS
   // ******************************
-  val r_fsm = RegInit(VecInit(Seq.fill(p.nDomeSlct)(s0NEW)))
+  val r_fsm = RegInit(VecInit(Seq.fill(p.nFieldSlct)(s0NEW)))
   val w_cfsm = Wire(AccStageFSM())
   val w_nfsm = Wire(AccStageFSM())
 
@@ -82,14 +82,14 @@ class AccStage (p: PrevUnitParams) extends Module {
   //           INTERFACE
   // ******************************
   // ------------------------------
-  //             DOME
+  //            FIELD
   // ------------------------------
-  val r_slct_out = Reg(new SlctBus(p.nDome, p.nPart, 1))
+  val r_slct_out = Reg(new SlctBus(p.nField, p.nPart, 1))
 
-  val w_slct_in = Wire(new SlctBus(p.nDome, p.nPart, 1))
-  val w_slct_out = Wire(new SlctBus(p.nDome, p.nPart, 1))
+  val w_slct_in = Wire(new SlctBus(p.nField, p.nPart, 1))
+  val w_slct_out = Wire(new SlctBus(p.nField, p.nPart, 1))
 
-  if (p.useDomeSlct) {    
+  if (p.useFieldSlct) {    
     w_slct_in := io.i_slct.get
     if (p.useAccReg) {
       r_slct_out := w_slct_in
@@ -99,7 +99,7 @@ class AccStage (p: PrevUnitParams) extends Module {
     }
     io.o_slct.get := w_slct_out
   } else {
-    w_slct_in.dome := 0.U
+    w_slct_in.field := 0.U
     w_slct_in.next := 0.U
     w_slct_in.step := 0.U
     w_slct_out := w_slct_in   
@@ -141,8 +141,8 @@ class AccStage (p: PrevUnitParams) extends Module {
   w_data_wait := (io.b_acc.ready & io.b_acc.found & ~io.b_acc.av) | (w_pftch_ready & w_pftch_found & ~w_pftch_av)
   w_data_pftch := io.b_acc.ready & ~io.b_acc.found & w_pftch_ready & w_pftch_found
 
-  w_cfsm := r_fsm(w_slct_in.dome)
-  r_fsm(w_slct_in.dome) := w_nfsm
+  w_cfsm := r_fsm(w_slct_in.field)
+  r_fsm(w_slct_in.field) := w_nfsm
 
   w_nfsm := w_cfsm
 
@@ -185,49 +185,49 @@ class AccStage (p: PrevUnitParams) extends Module {
   io.b_acc.valid := ((w_cfsm === s0NEW) & io.b_in.valid) | (w_cfsm === s3WAIT)
   io.b_acc.hart := io.b_in.ctrl.get.info.hart
   io.b_acc.rw := io.b_in.ctrl.get.op.wa
-  if (p.useDome) io.b_acc.dome.get := io.b_in.dome.get
+  if (p.useField) io.b_acc.field.get := io.b_in.field.get
   io.b_acc.tag := io.b_in.ctrl.get.addr.tag
   io.b_acc.set := io.b_in.ctrl.get.addr.set
 
   // ------------------------------
   //            REPLACE
   // ------------------------------
-  val r_rep_line = Reg(Vec(p.nDomeSlct, UInt(log2Ceil(p.nLine).W)))
+  val r_rep_line = Reg(Vec(p.nFieldSlct, UInt(log2Ceil(p.nLine).W)))
   val w_rep_line = Wire(UInt(log2Ceil(p.nLine).W))
 
   io.b_rep.valid := (w_cfsm === s1REP)
   io.b_rep.hart := io.b_in.ctrl.get.info.hart
-  if (p.useDome) io.b_rep.dome.get := io.b_in.dome.get
+  if (p.useField) io.b_rep.field.get := io.b_in.field.get
   io.b_rep.check := false.B
   io.b_rep.empty := false.B
   io.b_rep.tag := io.b_in.ctrl.get.addr.tag
   io.b_rep.set := io.b_in.ctrl.get.addr.set
 
   when (w_cfsm === s1REP) {
-    r_rep_line(w_slct_in.dome) := io.b_rep.line
+    r_rep_line(w_slct_in.field) := io.b_rep.line
     w_rep_line := io.b_rep.line
   }.otherwise {
-    w_rep_line := r_rep_line(w_slct_in.dome)
+    w_rep_line := r_rep_line(w_slct_in.field)
   }
 
   // ******************************
   //           PREFETCHER
   // ******************************
-  val r_pftch_in_use = RegInit(VecInit(Seq.fill(p.nDomeSlct)(false.B)))
+  val r_pftch_in_use = RegInit(VecInit(Seq.fill(p.nFieldSlct)(false.B)))
 
   if (p.usePftch) {
     io.b_pftch.get.valid := ((w_cfsm === s0NEW) & io.b_in.valid) | (w_cfsm === s3WAIT)
     io.b_pftch.get.hart := io.b_in.ctrl.get.info.hart
     io.b_pftch.get.rw := io.b_in.ctrl.get.op.wa
-    io.b_pftch.get.check := r_pftch_in_use(w_slct_in.dome) | (w_cfsm === s3WAIT)
-    if (p.useDome) io.b_pftch.get.dome.get := io.b_in.dome.get
+    io.b_pftch.get.check := r_pftch_in_use(w_slct_in.field) | (w_cfsm === s3WAIT)
+    if (p.useField) io.b_pftch.get.field.get := io.b_in.field.get
     io.b_pftch.get.tag := io.b_in.ctrl.get.addr.tag
     io.b_pftch.get.set := io.b_in.ctrl.get.addr.set
 
-    when (r_pftch_in_use(w_slct_in.dome)) {
-      r_pftch_in_use(w_slct_in.dome) := (w_wait_reg | w_data_wait)
+    when (r_pftch_in_use(w_slct_in.field)) {
+      r_pftch_in_use(w_slct_in.field) := (w_wait_reg | w_data_wait)
     }.otherwise {
-      r_pftch_in_use(w_slct_in.dome) := io.b_in.valid & io.b_pftch.get.found & (w_wait_reg | w_data_wait)
+      r_pftch_in_use(w_slct_in.field) := io.b_in.valid & io.b_pftch.get.found & (w_wait_reg | w_data_wait)
     }
   }
 
@@ -249,7 +249,7 @@ class AccStage (p: PrevUnitParams) extends Module {
   val w_bus = Wire(new GenSVBus(p, new PrevUnitCtrlBus(p), UInt(0.W)))
 
   w_bus.valid := io.b_in.valid & ~w_is_rep & w_data_av & ~w_wait_next
-  if (p.useDome) w_bus.dome.get := io.b_in.dome.get
+  if (p.useField) w_bus.field.get := io.b_in.field.get
   w_bus.ctrl.get := io.b_in.ctrl.get
   if (p.useAmo) w_bus.ctrl.get.info.rsv.get := io.b_rsv.get.ready
   w_bus.ctrl.get.addr.line := io.b_acc.line
@@ -274,7 +274,7 @@ class AccStage (p: PrevUnitParams) extends Module {
   w_next_rep := (w_cfsm === s2ACK) | ((w_cfsm === s1REP) & io.b_rep.ready & io.b_rep.alloc & ~io.b_rep.found)
 
   io.b_next.valid := ((~w_wait_reg & w_next_write) | w_next_rep)
-  if (p.useDome) io.b_next.dome.get := io.b_in.dome.get
+  if (p.useField) io.b_next.field.get := io.b_in.field.get
   io.b_next.hart := io.b_in.ctrl.get.info.hart
   if (!p.readOnly) io.b_next.rw := ~w_is_rep & io.b_in.ctrl.get.op.wa else io.b_next.rw := false.B
   io.b_next.size := io.b_in.ctrl.get.op.size
@@ -289,24 +289,24 @@ class AccStage (p: PrevUnitParams) extends Module {
   if (p.useAccReg) {
     w_wait_reg := ~m_reg.get.io.b_sin.ready
 
-    for (ds <- 0 until p.nDomeSlct) {
-      m_reg.get.io.i_flush(ds) := false.B
+    for (fs <- 0 until p.nFieldSlct) {
+      m_reg.get.io.i_flush(fs) := false.B
     }  
 
-    if (p.useDomeSlct) {
+    if (p.useFieldSlct) {
       m_reg.get.io.i_slct_in.get := w_slct_in
       m_reg.get.io.i_slct_out.get := w_slct_out
     }
 
     m_reg.get.io.b_sin.valid := w_bus.valid
-    if (p.useDome) m_reg.get.io.b_sin.dome.get := w_bus.dome.get
+    if (p.useField) m_reg.get.io.b_sin.field.get := w_bus.field.get
     m_reg.get.io.b_sin.ctrl.get := w_bus.ctrl.get
 
     io.b_out <> m_reg.get.io.b_sout
-    for (ds <- 0 until p.nDomeSlct) {
-      when (ds.U === w_slct_out.dome) {
-        m_reg.get.io.b_sout.ready := io.b_out.ready & ~io.b_dep.get(ds).lock
-        io.b_out.valid := m_reg.get.io.b_sout.valid & ~io.b_dep.get(ds).lock
+    for (fs <- 0 until p.nFieldSlct) {
+      when (fs.U === w_slct_out.field) {
+        m_reg.get.io.b_sout.ready := io.b_out.ready & ~io.b_dep.get(fs).lock
+        io.b_out.valid := m_reg.get.io.b_sout.valid & ~io.b_dep.get(fs).lock
       }
     }
 
@@ -314,7 +314,7 @@ class AccStage (p: PrevUnitParams) extends Module {
     w_wait_reg := ~io.b_out.ready
 
     io.b_out.valid := w_bus.valid
-    if (p.useDome) io.b_out.dome.get := w_bus.dome.get
+    if (p.useField) io.b_out.field.get := w_bus.field.get
     io.b_out.ctrl.get := w_bus.ctrl.get
   }
 
@@ -325,15 +325,15 @@ class AccStage (p: PrevUnitParams) extends Module {
   //             DEPEND
   // ******************************  
   if (p.useAccReg) {
-    for (ds <- 0 until p.nDomeSlct) {
-      io.b_dep.get(ds).reg := DontCare
-      io.b_dep.get(ds).reg.valid := m_reg.get.io.o_val.valid(ds)
-      io.b_dep.get(ds).reg.lock := (ds.U =/= w_slct_out.dome) | ~io.b_out.ready
-      io.b_dep.get(ds).reg.addr := m_reg.get.io.o_val.ctrl.get(ds).addr
-      if (p.useDomeSlct) {
-        io.b_dep.get(ds).reg.dome.get := ds.U
-      } else if (p.useDome) {
-        io.b_dep.get(0).reg.dome.get := m_reg.get.io.o_val.dome.get
+    for (fs <- 0 until p.nFieldSlct) {
+      io.b_dep.get(fs).reg := DontCare
+      io.b_dep.get(fs).reg.valid := m_reg.get.io.o_val.valid(fs)
+      io.b_dep.get(fs).reg.lock := (fs.U =/= w_slct_out.field) | ~io.b_out.ready
+      io.b_dep.get(fs).reg.addr := m_reg.get.io.o_val.ctrl.get(fs).addr
+      if (p.useFieldSlct) {
+        io.b_dep.get(fs).reg.field.get := fs.U
+      } else if (p.useField) {
+        io.b_dep.get(0).reg.field.get := m_reg.get.io.o_val.field.get
       }
     }
   }
@@ -342,15 +342,15 @@ class AccStage (p: PrevUnitParams) extends Module {
   //             PEND
   // ******************************
   if (p.useAccReg) {
-    for (ds <- 0 until p.nDomeSlct) {
+    for (fs <- 0 until p.nFieldSlct) {
       if (p.usePftch) {
-        io.o_pend.get(ds).valid := m_reg.get.io.o_val.valid(ds) & ~m_reg.get.io.o_val.ctrl.get(ds).pftch.get.use
+        io.o_pend.get(fs).valid := m_reg.get.io.o_val.valid(fs) & ~m_reg.get.io.o_val.ctrl.get(fs).pftch.get.use
       } else {
-        io.o_pend.get(ds).valid := m_reg.get.io.o_val.valid(ds)
+        io.o_pend.get(fs).valid := m_reg.get.io.o_val.valid(fs)
       }   
-      io.o_pend.get(ds).valid := m_reg.get.io.o_val.valid(ds)
-      io.o_pend.get(ds).line := m_reg.get.io.o_val.ctrl.get(ds).addr.line
-      io.o_pend.get(ds).set := m_reg.get.io.o_val.ctrl.get(ds).addr.set
+      io.o_pend.get(fs).valid := m_reg.get.io.o_val.valid(fs)
+      io.o_pend.get(fs).line := m_reg.get.io.o_val.ctrl.get(fs).addr.line
+      io.o_pend.get(fs).set := m_reg.get.io.o_val.ctrl.get(fs).addr.set
     }
   }
 
@@ -365,7 +365,7 @@ class AccStage (p: PrevUnitParams) extends Module {
 
   r_miss.valid := (w_cfsm === s0NEW) & io.b_in.valid & w_data_miss
   r_miss.hart := io.b_in.ctrl.get.info.hart
-  if (p.useDome) r_miss.dome.get := io.b_in.dome.get
+  if (p.useField) r_miss.field.get := io.b_in.field.get
   r_miss.addr := io.b_in.ctrl.get.addr
 
   io.o_miss := r_miss
@@ -378,14 +378,14 @@ class AccStage (p: PrevUnitParams) extends Module {
 
     if (p.useAccReg) {
       when (io.b_cbo(c).valid & io.b_cbo(c).inv) {
-        if (p.useDomeSlct) {
-          for (d <- 0 until p.nDome) {
-            when (d.U === io.b_cbo(c).dome.get) {
-              io.b_cbo(c).ready := ~m_reg.get.io.o_val.valid(d)
+        if (p.useFieldSlct) {
+          for (f <- 0 until p.nField) {
+            when (f.U === io.b_cbo(c).field.get) {
+              io.b_cbo(c).ready := ~m_reg.get.io.o_val.valid(f)
             }
           }
-        } else if (p.useDomeTag) {
-          when (io.b_cbo(c).dome.get === m_reg.get.io.o_val.dome.get) {
+        } else if (p.useFieldTag) {
+          when (io.b_cbo(c).field.get === m_reg.get.io.o_val.field.get) {
             io.b_cbo(c).ready := ~m_reg.get.io.o_val.valid(0)
           }
         } else {
@@ -396,22 +396,22 @@ class AccStage (p: PrevUnitParams) extends Module {
   }
 
   // ******************************
-  //             DOME
+  //            FIELD
   // ******************************
-  if (p.useDome) {
+  if (p.useField) {
     if (p.useAccReg) {
-      if (p.useDomeSlct) {
-        for (d <- 0 until p.nDome) {
-          io.b_dome.get(d).free := ~m_reg.get.io.o_val.valid(d)
+      if (p.useFieldSlct) {
+        for (f <- 0 until p.nField) {
+          io.b_field.get(f).free := ~m_reg.get.io.o_val.valid(f)
         } 
       } else {
-        for (d <- 0 until p.nDome) {
-          io.b_dome.get(d).free := (d.U =/= m_reg.get.io.o_val.dome.get) | ~m_reg.get.io.o_val.valid(0)
+        for (f <- 0 until p.nField) {
+          io.b_field.get(f).free := (f.U =/= m_reg.get.io.o_val.field.get) | ~m_reg.get.io.o_val.valid(0)
         }    
       }      
     } else {
-      for (d <- 0 until p.nDome) {
-        io.b_dome.get(d).free := true.B
+      for (f <- 0 until p.nField) {
+        io.b_field.get(f).free := true.B
       }
     }
   } 
@@ -444,7 +444,7 @@ class AccDepend(p: PrevParams) extends Module {
     var r: Int = 0
     
     for (np <- 0 until p.nPrevPort) {
-      r = r + p.pPrev(np).nDomeSlct
+      r = r + p.pPrev(np).nFieldSlct
     }
 
     return r
@@ -455,11 +455,11 @@ class AccDepend(p: PrevParams) extends Module {
   for (np <- 0 until p.nPrevPort) {
     var r: Int = 0
     
-    for (nds <- 0 until p.pPrev(np).nDomeSlct) {
+    for (nds <- 0 until p.pPrev(np).nFieldSlct) {
       nRegPrev(r + nds) = np
     }
 
-    r = r + p.pPrev(np).nDomeSlct
+    r = r + p.pPrev(np).nFieldSlct
   }
 
   val io = IO(new Bundle {
@@ -480,15 +480,15 @@ class AccDepend(p: PrevParams) extends Module {
   if (p.useAccReg) {
     for (r0 <- 0 until nReg) {
       for (r1 <- (r0 + 1) until nReg) {
-        val w_dome = Wire(Bool())
+        val w_field = Wire(Bool())
 
-        if (p.useDome) {
-          w_dome := (io.i_read(r0).dome.get === io.b_acc(r1).reg.dome.get)
+        if (p.useField) {
+          w_field := (io.i_read(r0).field.get === io.b_acc(r1).reg.field.get)
         } else {
-          w_dome := true.B
+          w_field := true.B
         }
 
-        when (io.i_read(r1).valid & io.i_read(r1).lock & w_dome) {
+        when (io.i_read(r1).valid & io.i_read(r1).lock & w_field) {
           io.b_acc(r0).lock := true.B
         }
       }
@@ -501,15 +501,15 @@ class AccDepend(p: PrevParams) extends Module {
   if (p.useAccReg) {
     for (r0 <- 0 until nReg) {
       for (r1 <- 0 until r0) {
-        val w_dome = Wire(Bool())
+        val w_field = Wire(Bool())
 
-        if (p.useDome) {
-          w_dome := (io.b_acc(r0).reg.dome.get === io.b_acc(r1).reg.dome.get)
+        if (p.useField) {
+          w_field := (io.b_acc(r0).reg.field.get === io.b_acc(r1).reg.field.get)
         } else {
-          w_dome := true.B
+          w_field := true.B
         }
 
-        when (io.b_acc(r1).reg.valid & io.b_acc(r1).reg.lock & w_dome) {
+        when (io.b_acc(r1).reg.valid & io.b_acc(r1).reg.lock & w_field) {
           io.b_acc(r0).lock := true.B
         }
       }

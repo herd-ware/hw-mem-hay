@@ -3,7 +3,7 @@
  * Created Date: 2023-02-25 04:11:31 pm                                        *
  * Author: Mathieu Escouteloup                                                 *
  * -----                                                                       *
- * Last Modified: 2023-02-25 09:40:25 pm                                       *
+ * Last Modified: 2023-03-02 01:41:03 pm                                       *
  * Modified By: Mathieu Escouteloup                                            *
  * -----                                                                       *
  * License: See LICENSE.md                                                     *
@@ -20,7 +20,7 @@ import chisel3.util._
 
 import herd.common.gen._
 import herd.common.tools._
-import herd.common.dome._
+import herd.common.field._
 import herd.common.mem.mb4s._
 import herd.mem.hay.common._
 import herd.mem.hay.cache._
@@ -29,10 +29,10 @@ import herd.mem.hay.cache.{Mem => PftchMem}
 
 class Pftch (p: PftchParams) extends Module {
   val io = IO(new Bundle {
-    val b_dome = if (p.useDome) Some(Vec(p.nDome, new DomeIO(p.nAddrBit, p.nDataBit))) else None
-    val b_part = if (p.useDome) Some(new NRsrcIO(1, p.nDome, p.nPart)) else None
+    val b_field = if (p.useField) Some(Vec(p.nField, new FieldIO(p.nAddrBit, p.nDataBit))) else None
+    val b_part = if (p.useField) Some(new NRsrcIO(1, p.nField, p.nPart)) else None
 
-    val b_cbo = Vec(p.nCbo, Flipped(new CboIO(p.nHart, p.useDome, p.nDome, p.nTagBit, p.nSet)))
+    val b_cbo = Vec(p.nCbo, Flipped(new CboIO(p.nHart, p.useField, p.nField, p.nTagBit, p.nSet)))
 
     val b_prev_acc   = Flipped(Vec(p.nPrevPort, new PftchAccIO(p, p.nPftchEntry)))
     val b_prev_read  = Flipped(Vec(p.nPrevPort, new PftchReadIO(p, p.nPftchEntry)))
@@ -40,14 +40,14 @@ class Pftch (p: PftchParams) extends Module {
 
     val i_miss = Input(Vec(p.nPrevPort, new MissBus(p, p.nHart)))
 
-    val i_slct_acc = if (p.useDomeSlct) Some(Input(new SlctBus(p.nDome, p.nPart, 1))) else None
+    val i_slct_acc = if (p.useFieldSlct) Some(Input(new SlctBus(p.nField, p.nPart, 1))) else None
     val b_rep = new CacheRepIO(p)
 
-    val i_slct_req = if (p.useDomeSlct) Some(Input(new SlctBus(p.nDome, p.nPart, 1))) else None
-    val i_slct_read = if (p.useDomeSlct) Some(Input(new SlctBus(p.nDome, p.nPart, 1))) else None
+    val i_slct_req = if (p.useFieldSlct) Some(Input(new SlctBus(p.nField, p.nPart, 1))) else None
+    val i_slct_read = if (p.useFieldSlct) Some(Input(new SlctBus(p.nField, p.nPart, 1))) else None
     val b_port = new Mb4sIO(p.pNextPort)
 
-    val i_slct_write = if (p.useDomeSlct) Some(Input(new SlctBus(p.nDome, p.nPart, 1))) else None
+    val i_slct_write = if (p.useFieldSlct) Some(Input(new SlctBus(p.nField, p.nPart, 1))) else None
     val b_write = new CacheWriteIO(p)
     val o_end = Output(new CachePendBus(p))
   })  
@@ -111,8 +111,8 @@ class Pftch (p: PftchParams) extends Module {
   // ******************************
   //             CTRL
   // ******************************
-  if (p.useDome) {
-    m_ctrl.io.b_dome.get <> io.b_dome.get
+  if (p.useField) {
+    m_ctrl.io.b_field.get <> io.b_field.get
     m_ctrl.io.b_part.get <> io.b_part.get
   }
   m_ctrl.io.b_cbo <> io.b_cbo
@@ -138,13 +138,13 @@ class Pftch (p: PftchParams) extends Module {
   // ******************************
   //             FETCH
   // ******************************
-  if (p.useDome) m_fetch.io.b_dome.get <> io.b_dome.get
+  if (p.useField) m_fetch.io.b_field.get <> io.b_field.get
   m_fetch.io.b_cbo <> io.b_cbo
 
   m_fetch.io.i_miss := io.i_miss
   m_fetch.io.b_port <> io.b_port
 
-  if (p.useDomeSlct) {
+  if (p.useFieldSlct) {
     m_fetch.io.i_slct_acc.get := io.i_slct_acc.get
     m_fetch.io.i_slct_req.get := io.i_slct_req.get
     m_fetch.io.i_slct_write.get := io.i_slct_write.get
@@ -153,13 +153,13 @@ class Pftch (p: PftchParams) extends Module {
   // ******************************
   //             MOVE
   // ******************************
-  if (p.useDome) m_move.io.b_dome.get <> io.b_dome.get
+  if (p.useField) m_move.io.b_field.get <> io.b_field.get
   m_move.io.b_cbo <> io.b_cbo
 
   m_move.io.b_write <> io.b_write
   io.o_end := m_move.io.o_end_cache
 
-  if (p.useDomeSlct) {
+  if (p.useFieldSlct) {
     m_move.io.i_slct_acc.get := io.i_slct_acc.get
     m_move.io.i_slct_read.get := io.i_slct_read.get
     m_move.io.i_slct_write.get := io.i_slct_write.get
@@ -187,25 +187,25 @@ class Pftch (p: PftchParams) extends Module {
   } 
 
   // ******************************
-  //             DOME
+  //            FIELD
   // ******************************
-  if (p.useDome) {
+  if (p.useField) {
     // ------------------------------
-    //           DOME STATE
+    //          FIELD STATE
     // ------------------------------
-    for (d <- 0 until p.nDome) {    
-      m_ctrl.io.b_dome.get(d).flush := io.b_dome.get(d).flush & m_fetch.io.b_dome.get(d).free & m_move.io.b_dome.get(d).free
-      io.b_dome.get(d).free := m_fetch.io.b_dome.get(d).free & m_move.io.b_dome.get(d).free & m_ctrl.io.b_dome.get(d).free
+    for (f <- 0 until p.nField) {    
+      m_ctrl.io.b_field.get(f).flush := io.b_field.get(f).flush & m_fetch.io.b_field.get(f).free & m_move.io.b_field.get(f).free
+      io.b_field.get(f).free := m_fetch.io.b_field.get(f).free & m_move.io.b_field.get(f).free & m_ctrl.io.b_field.get(f).free
     }
 
     // ------------------------------
     //           PART STATE
     // ------------------------------
     for (pa <- 0 until p.nPart) {
-      val w_dome_flush = io.b_dome.get(io.b_part.get.state(pa).dome).flush
-      val w_op_free = m_fetch.io.b_dome.get(io.b_part.get.state(pa).dome).free & m_move.io.b_dome.get(io.b_part.get.state(pa).dome).free
+      val w_field_flush = io.b_field.get(io.b_part.get.state(pa).field).flush
+      val w_op_free = m_fetch.io.b_field.get(io.b_part.get.state(pa).field).free & m_move.io.b_field.get(io.b_part.get.state(pa).field).free
 
-      m_ctrl.io.b_part.get.state(pa).flush := io.b_part.get.state(pa).flush & (~w_dome_flush | w_op_free)
+      m_ctrl.io.b_part.get.state(pa).flush := io.b_part.get.state(pa).flush & (~w_field_flush | w_op_free)
     }    
   }
 

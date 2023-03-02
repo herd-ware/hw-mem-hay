@@ -3,7 +3,7 @@
  * Created Date: 2023-02-25 04:11:31 pm                                        *
  * Author: Mathieu Escouteloup                                                 *
  * -----                                                                       *
- * Last Modified: 2023-02-25 09:39:54 pm                                       *
+ * Last Modified: 2023-03-02 01:39:51 pm                                       *
  * Modified By: Mathieu Escouteloup                                            *
  * -----                                                                       *
  * License: See LICENSE.md                                                     *
@@ -18,7 +18,7 @@ package herd.mem.hay.cache
 import chisel3._
 import chisel3.util._
 
-import herd.common.dome._
+import herd.common.field._
 import herd.common.mem.cbo.{OP, SORT, BLOCK}
 import herd.mem.hay.common._
 
@@ -29,10 +29,10 @@ class Cache(p: CacheParams) extends Module {
   require(p.nMem <= p.nSet, "Sets must be more or as numerous as memories.")
 
   val io = IO(new Bundle {
-    val b_dome = if (p.useDome) Some(Vec(p.nDome, new DomeIO(0, p.nDataBit))) else None
-    val b_part = if (p.useDome) Some(new NRsrcIO(1, p.nDome, p.nPart)) else None
+    val b_field = if (p.useField) Some(Vec(p.nField, new FieldIO(0, p.nDataBit))) else None
+    val b_part = if (p.useField) Some(new NRsrcIO(1, p.nField, p.nPart)) else None
     
-    val b_cbo = Vec(p.nCbo, Flipped(new CboIO(1, p.useDome, p.nDome, p.nTagBit, p.nSet)))
+    val b_cbo = Vec(p.nCbo, Flipped(new CboIO(1, p.useField, p.nField, p.nTagBit, p.nSet)))
 
     val b_acc = Flipped(Vec(p.nAccess, new CacheAccIO(p)))    
     val b_rep = Flipped(new CacheRepIO(p))
@@ -52,8 +52,8 @@ class Cache(p: CacheParams) extends Module {
   // ******************************
   // Default
   for (s <- 0 until p.nSet) {
-    if (p.useDome) {
-      m_ctrl(s).io.b_dome.get <> io.b_dome.get
+    if (p.useField) {
+      m_ctrl(s).io.b_field.get <> io.b_field.get
       m_ctrl(s).io.b_part.get <> io.b_part.get
     }
     
@@ -189,9 +189,9 @@ class Cache(p: CacheParams) extends Module {
   }
 
   // ******************************
-  //             DOME
+  //            FIELD
   // ******************************
-  if (p.useDome) {
+  if (p.useField) {
     for (pa <- 0 until p.nPart) {
       val w_free = Wire(Vec(p.nSet, Bool()))
 
@@ -202,8 +202,8 @@ class Cache(p: CacheParams) extends Module {
       io.b_part.get.state(pa).free := w_free.asUInt.andR
     }
 
-    for (d <- 0 until p.nDome) {
-      io.b_dome.get(d).free := true.B
+    for (f <- 0 until p.nField) {
+      io.b_field.get(f).free := true.B
     }
   } 
 

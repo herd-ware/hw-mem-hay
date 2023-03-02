@@ -30,9 +30,9 @@ object NextConfigBase extends NextConfig (
   nHart = 2,
   nCbo = 1,
 
-  useDome = true,
-  nDome = 2,
-  multiDome = true,
+  useField = true,
+  nField = 2,
+  multiField = true,
   nPart = 2,
 
   nPrevDataByte = 4,

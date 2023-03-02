@@ -47,7 +47,7 @@ class MemWriteIO (p: MemParams) extends Bundle {
 // ******************************
 //            CACHE
 // ******************************
-class CacheAccIO(p: CacheParams) extends FlatSRVIO(p.useDome, p.nDome) {
+class CacheAccIO(p: CacheParams) extends FlatSRVIO(p.useField, p.nField) {
   val hart = Output(UInt(log2Ceil(p.nHart).W))
   val rw = Output(Bool())
   val tag = Output(UInt(p.nTagBit.W))
@@ -59,7 +59,7 @@ class CacheAccIO(p: CacheParams) extends FlatSRVIO(p.useDome, p.nDome) {
   val line = Input(UInt(log2Ceil(p.nLine).W))             // Data Line
 }
 
-class CacheRepIO(p: CacheParams) extends FlatSRVIO(p.useDome, p.nDome) {
+class CacheRepIO(p: CacheParams) extends FlatSRVIO(p.useField, p.nField) {
   val hart = Output(UInt(log2Ceil(p.nHart).W))
   val check = Output(Bool())
   val empty = Output(Bool())
@@ -79,7 +79,7 @@ class CachePendBus(p: CacheParams) extends Bundle {
 }
 
 // Read port
-class CacheReadIO(p: CacheParams) extends FlatSRVIO(p.useDome, p.nDome) {
+class CacheReadIO(p: CacheParams) extends FlatSRVIO(p.useField, p.nField) {
   val mask = Output(UInt(p.nDataByte.W))
   val offset = Output(UInt(log2Ceil(p.nDataByte).W))
   val data = Output(UInt(log2Ceil(p.nMemData).W))
@@ -89,7 +89,7 @@ class CacheReadIO(p: CacheParams) extends FlatSRVIO(p.useDome, p.nDome) {
 }
 
 // Write port
-class CacheWriteIO(p: CacheParams) extends FlatSRVIO(p.useDome, p.nDome) {
+class CacheWriteIO(p: CacheParams) extends FlatSRVIO(p.useField, p.nField) {
   val mask = Output(UInt(p.nDataByte.W))
   val offset = Output(UInt(log2Ceil(p.nDataByte).W))
   val data = Output(UInt(log2Ceil(p.nMemData).W))

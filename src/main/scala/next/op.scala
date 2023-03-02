@@ -3,7 +3,7 @@
  * Created Date: 2023-02-25 04:11:31 pm                                        *
  * Author: Mathieu Escouteloup                                                 *
  * -----                                                                       *
- * Last Modified: 2023-02-25 09:40:17 pm                                       *
+ * Last Modified: 2023-03-02 01:40:20 pm                                       *
  * Modified By: Mathieu Escouteloup                                            *
  * -----                                                                       *
  * License: See LICENSE.md                                                     *
@@ -21,7 +21,7 @@ import chisel3.experimental.ChiselEnum
 
 import herd.common.gen._
 import herd.common.tools._
-import herd.common.dome._
+import herd.common.field._
 import herd.common.mem.mb4s._
 import herd.mem.hay.common._
 import herd.mem.hay.cache._
@@ -29,10 +29,10 @@ import herd.mem.hay.cache._
 
 class OpStage(p: NextParams) extends Module {
   val io = IO(new Bundle {
-    val b_dome = if (p.useDome) Some(Vec(p.nDome, new DomeIO(p.nAddrBit, p.nDataBit))) else None
-    val b_cbo = Vec(p.nCbo, Flipped(new CboIO(p.nHart, p.useDome, p.nDome, p.nTagBit, p.nSet)))
+    val b_field = if (p.useField) Some(Vec(p.nField, new FieldIO(p.nAddrBit, p.nDataBit))) else None
+    val b_cbo = Vec(p.nCbo, Flipped(new CboIO(p.nHart, p.useField, p.nField, p.nTagBit, p.nSet)))
 
-    val i_slct_in = if (p.useDomeSlct) Some(Input(new SlctBus(p.nDome, p.nPart, 1))) else None
+    val i_slct_in = if (p.useFieldSlct) Some(Input(new SlctBus(p.nField, p.nPart, 1))) else None
     val b_in = Flipped(new GenSRVIO(p, new NextOpCtrlBus(p), UInt(0.W)))
 
     val b_prev = if (!p.readOnly) Some(Vec(p.nPrevPort, Flipped(new GenDRVIO(p, UInt(0.W), UInt((p.nDataByte * 8).W))))) else None
@@ -56,14 +56,14 @@ class OpStage(p: NextParams) extends Module {
   val w_wait_wport = Wire(Bool())
 
   // ******************************
-  //         DOME INTERFACE
+  //        FIELD INTERFACE
   // ******************************
-  val w_slct_in = Wire(new SlctBus(p.nDome, p.nPart, 1))
+  val w_slct_in = Wire(new SlctBus(p.nField, p.nPart, 1))
 
-  if (p.useDomeSlct) {
+  if (p.useFieldSlct) {
     w_slct_in := io.i_slct_in.get  
   } else {
-    w_slct_in.dome := 0.U
+    w_slct_in.field := 0.U
     w_slct_in.next := 0.U
     w_slct_in.step := 0.U
   }
@@ -71,7 +71,7 @@ class OpStage(p: NextParams) extends Module {
   // ******************************
   //             BUS
   // ******************************   
-  val r_data = Reg(Vec(p.nDomeSlct, UInt(log2Ceil(p.nData).W)))
+  val r_data = Reg(Vec(p.nFieldSlct, UInt(log2Ceil(p.nData).W)))
   val w_ndata = Wire(UInt(log2Ceil(p.nData).W))
   val w_caddr = Wire(new AddrBus(p))
 
@@ -82,11 +82,11 @@ class OpStage(p: NextParams) extends Module {
   val w_rep_last = Wire(Bool())
 
   w_caddr := io.b_in.ctrl.get.addr
-  w_caddr.data := r_data(w_slct_in.dome)
+  w_caddr.data := r_data(w_slct_in.field)
   w_caddr.offset := 0.U
   
-  w_ndata := r_data(w_slct_in.dome)
-  r_data(w_slct_in.dome) := w_ndata
+  w_ndata := r_data(w_slct_in.field)
+  r_data(w_slct_in.field) := w_ndata
 
   w_is_rep := io.b_in.valid & ~io.b_in.ctrl.get.rw
   w_is_wt := io.b_in.valid & io.b_in.ctrl.get.rw
@@ -122,12 +122,12 @@ class OpStage(p: NextParams) extends Module {
   w_wait_prev := false.B
   if (!p.readOnly) {
     for (pp <- 0 until p.nPrevPort) {
-      if (p.useDomeSlct) {
-        for (ds <- 0 until p.nDomeSlct) {
-          io.b_prev.get(pp).ready(ds) := (pp.U === io.b_in.ctrl.get.prev) & (ds.U === w_slct_in.dome) & w_is_wt & ~w_wait_wport
+      if (p.useFieldSlct) {
+        for (fs <- 0 until p.nFieldSlct) {
+          io.b_prev.get(pp).ready(fs) := (pp.U === io.b_in.ctrl.get.prev) & (fs.U === w_slct_in.field) & w_is_wt & ~w_wait_wport
 
-          when ((pp.U === io.b_in.ctrl.get.prev) & (ds.U === w_slct_in.dome)) {
-            w_wait_prev := w_is_wt & ~io.b_prev.get(pp).valid(ds)
+          when ((pp.U === io.b_in.ctrl.get.prev) & (fs.U === w_slct_in.field)) {
+            w_wait_prev := w_is_wt & ~io.b_prev.get(pp).valid(fs)
           }
         }
       } else {
@@ -154,11 +154,11 @@ class OpStage(p: NextParams) extends Module {
   //             WRITE
   // ------------------------------
   if (!p.readOnly) {
-    w_wait_wport := w_is_wt & ~io.b_port.write.ready(w_slct_in.dome)  
+    w_wait_wport := w_is_wt & ~io.b_port.write.ready(w_slct_in.field)  
 
     io.b_port.write.valid := w_is_wt & ~w_wait_prev
-    if (p.useDome) io.b_port.write.dome.get := io.b_in.dome.get
-    io.b_port.write.data := io.b_prev.get(io.b_in.ctrl.get.prev).data.get(w_slct_in.dome)
+    if (p.useField) io.b_port.write.field.get := io.b_in.field.get
+    io.b_port.write.data := io.b_prev.get(io.b_in.ctrl.get.prev).data.get(w_slct_in.field)
   } else {
     w_wait_wport := false.B
 
@@ -173,7 +173,7 @@ class OpStage(p: NextParams) extends Module {
 
   m_rport.io.b_port <> io.b_port.read
 
-  if (p.useDomeSlct) m_rport.io.i_slct.get := w_slct_in
+  if (p.useFieldSlct) m_rport.io.i_slct.get := w_slct_in
   m_rport.io.b_sout.ready := w_is_rep & ~w_wait_cache
 
   w_wait_rport := w_is_rep & ~m_rport.io.b_sout.valid
@@ -187,7 +187,7 @@ class OpStage(p: NextParams) extends Module {
 
   // Connect to port
   io.b_rep.valid := w_is_rep & ~w_wait_rport
-  if (p.useDome) io.b_rep.dome.get := io.b_in.dome.get
+  if (p.useField) io.b_rep.field.get := io.b_in.field.get
   io.b_rep.mask := SIZE.toMask(p.nNextDataByte, SIZE.toSize(p.nNextDataByte).U)
   io.b_rep.offset := w_caddr.offset
   io.b_rep.data := w_caddr.memdata()
@@ -210,11 +210,11 @@ class OpStage(p: NextParams) extends Module {
   }
 
   // ******************************
-  //             DOME
+  //            FIELD
   // ******************************
-  if (p.useDome) {
-    for (d <- 0 until p.nDome) {
-      io.b_dome.get(d).free := true.B 
+  if (p.useField) {
+    for (f <- 0 until p.nField) {
+      io.b_field.get(f).free := true.B 
     }
   } 
 

@@ -32,10 +32,10 @@ trait PftchParams extends CacheParams {
   def nHart: Int
   def nCbo: Int
 
-  def useDome: Boolean
-  def nDome: Int
+  def useField: Boolean
+  def nField: Int
   def nPart: Int
-  def multiDome: Boolean
+  def multiField: Boolean
 
   def nNextDataByte: Int
   def nNextDataBit: Int = nNextDataByte * 8
@@ -91,9 +91,9 @@ trait PftchParams extends CacheParams {
     nAddrBit = nAddrBit,
     useAmo = false,
     nDataByte = nNextDataByte,
-    useDome =  useDome,
-    nDome = nDome,
-    multiDome = multiDome
+    useField =  useField,
+    nField = nField,
+    multiField = multiField
   )
 }
 
@@ -106,9 +106,9 @@ case class PftchConfig (
   nHart: Int,
   nCbo: Int,
 
-  useDome: Boolean,
-  nDome: Int,
-  multiDome: Boolean,
+  useField: Boolean,
+  nField: Int,
+  multiField: Boolean,
   nPart: Int,
 
   nNextDataByte: Int,

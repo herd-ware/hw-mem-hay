@@ -34,9 +34,9 @@ object CacheConfigBase extends CacheConfig (
   nHart = 1,
   nCbo = 1,
   
-  useDome = true,
-  nDome = 2,
-  multiDome = false,
+  useField = true,
+  nField = 2,
+  multiField = false,
   nPart = 2,
 
   nAccess = 2,
