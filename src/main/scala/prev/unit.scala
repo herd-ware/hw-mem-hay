@@ -1,10 +1,10 @@
 /*
- * File: unit.scala                                                            *
+ * File: unit.scala
  * Created Date: 2023-02-25 04:11:31 pm                                        *
  * Author: Mathieu Escouteloup                                                 *
  * -----                                                                       *
- * Last Modified: 2023-03-02 01:45:33 pm                                       *
- * Modified By: Mathieu Escouteloup                                            *
+ * Last Modified: 2023-03-03 02:32:19 pm
+ * Modified By: Mathieu Escouteloup
  * -----                                                                       *
  * License: See LICENSE.md                                                     *
  * Copyright (c) 2023 HerdWare                                                *
@@ -21,6 +21,7 @@ import chisel3.util._
 import herd.common.gen._
 import herd.common.field._
 import herd.common.tools._
+import herd.common.core.{HpcCacheBus}
 import herd.common.mem.mb4s._
 import herd.mem.hay.common._
 import herd.mem.hay.cache._
@@ -60,6 +61,7 @@ class PrevUnit (p: PrevUnitParams) extends Module {
     val b_next_data = if (!p.readOnly) Some(new GenDRVIO(p, UInt(0.W), UInt((p.nDataByte * 8).W))) else None
 
     val o_miss = Output(new MissBus(p, p.nHart))
+    val o_hpc = Output(Vec(p.nHart, new HpcCacheBus()))
     val o_pend = Output(Vec(p.nPendingAcc, new CachePendBus(p)))
   })
 
@@ -103,6 +105,7 @@ class PrevUnit (p: PrevUnitParams) extends Module {
   if (p.useAmo) m_acc.io.b_rsv.get <> io.b_rsv.get
   m_acc.io.b_next <> io.b_next_ctrl
   io.o_miss := m_acc.io.o_miss
+  io.o_hpc := m_acc.io.o_hpc
 
   // ******************************
   //             READ

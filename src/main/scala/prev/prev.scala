@@ -1,10 +1,10 @@
 /*
- * File: prev.scala                                                            *
+ * File: prev.scala
  * Created Date: 2023-02-25 04:11:31 pm                                        *
  * Author: Mathieu Escouteloup                                                 *
  * -----                                                                       *
- * Last Modified: 2023-03-02 01:45:20 pm                                       *
- * Modified By: Mathieu Escouteloup                                            *
+ * Last Modified: 2023-03-03 02:32:24 pm
+ * Modified By: Mathieu Escouteloup
  * -----                                                                       *
  * License: See LICENSE.md                                                     *
  * Copyright (c) 2023 HerdWare                                                *
@@ -21,6 +21,7 @@ import chisel3.util._
 import herd.common.gen._
 import herd.common.field._
 import herd.common.tools._
+import herd.common.core.{HpcCacheBus}
 import herd.common.mem.mb4s._
 import herd.mem.hay.common._
 import herd.mem.hay.cache._
@@ -53,6 +54,7 @@ class Prev (p: PrevParams) extends Module {
     val b_next_data = if (!p.readOnly) Some(Vec(p.nPrevPort, new GenDRVIO(p, UInt(0.W), UInt((p.nDataByte * 8).W)))) else None
 
     val o_miss = Output(Vec(p.nPrevPort, new MissBus(p, p.nHart)))
+    val o_hpc = Output(Vec(p.nHart, new HpcCacheBus()))
     val o_pend = Output(Vec(p.nPendingAcc, new CachePendBus(p)))
   })
 
@@ -154,6 +156,22 @@ class Prev (p: PrevParams) extends Module {
         io.o_pend(pa + ppa) := m_unit(pp).io.o_pend(ppa)
       }
       pa = pa + p.pPrev(pp).nPendingAcc
+    }
+    
+    for (h <- 0 until p.nHart) {
+      val w_hpc_hit = Wire(Vec(p.nPrevPort, Bool()))
+      val w_hpc_pftch = Wire(Vec(p.nPrevPort, Bool()))
+      val w_hpc_miss = Wire(Vec(p.nPrevPort, Bool()))
+
+      for (pp <- 0 until p.nPrevPort) {
+        w_hpc_hit(pp) := m_unit(pp).io.o_hpc(h).hit.orR
+        w_hpc_pftch(pp) := m_unit(pp).io.o_hpc(h).pftch.orR
+        w_hpc_miss(pp) := m_unit(pp).io.o_hpc(h).miss.orR
+      }
+
+      io.o_hpc(h).hit := PopCount(w_hpc_hit.asUInt)
+      io.o_hpc(h).pftch := PopCount(w_hpc_pftch.asUInt)
+      io.o_hpc(h).miss := PopCount(w_hpc_miss.asUInt)
     }
   }
 

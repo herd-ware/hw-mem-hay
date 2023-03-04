@@ -1,10 +1,10 @@
 /*
- * File: hay.scala                                                             *
+ * File: hay.scala
  * Created Date: 2023-02-25 04:11:31 pm                                        *
  * Author: Mathieu Escouteloup                                                 *
  * -----                                                                       *
- * Last Modified: 2023-03-02 01:43:21 pm                                       *
- * Modified By: Mathieu Escouteloup                                            *
+ * Last Modified: 2023-03-03 02:32:29 pm
+ * Modified By: Mathieu Escouteloup
  * -----                                                                       *
  * License: See LICENSE.md                                                     *
  * Copyright (c) 2023 HerdWare                                                *
@@ -20,6 +20,7 @@ import chisel3.util._
 
 import herd.common.field._
 import herd.common.tools._
+import herd.common.core.{HpcCacheBus}
 import herd.common.mem.mb4s._
 import herd.common.mem.cbo.{CboIO, OP, SORT, BLOCK}
 import herd.mem.hay.cache._
@@ -45,7 +46,7 @@ class Hay(p: HayParams) extends Module {
     )
     val b_next = new Mb4sIO(p.pNextBus)
 
-    val o_miss = Output(Vec(p.nHart, UInt(32.W)))
+    val o_hpc = Output(Vec(p.nHart, new HpcCacheBus()))
   })
   
   // ******************************
@@ -270,16 +271,9 @@ class Hay(p: HayParams) extends Module {
   }
 
   // ******************************
-  //              MISS
+  //             HPC
   // ******************************
-  val w_miss = Wire(Vec(p.nHart, Vec(p.nPrevPort, Bool())))
-
-  for (h <- 0 until p.nHart) {
-    for (pp <- 0 until p.nPrevPort) {
-      w_miss(h)(pp) := m_prev.io.o_miss(pp).valid & (h.U === m_prev.io.o_miss(pp).hart)
-    }
-    io.o_miss(h) := PopCount(w_miss(h).asUInt)
-  }
+  io.o_hpc := m_prev.io.o_hpc
 
   // ******************************
   //            FLUSH

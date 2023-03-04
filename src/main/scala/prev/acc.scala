@@ -1,10 +1,10 @@
 /*
- * File: acc.scala                                                             *
+ * File: acc.scala
  * Created Date: 2023-02-25 04:11:31 pm                                        *
  * Author: Mathieu Escouteloup                                                 *
  * -----                                                                       *
- * Last Modified: 2023-03-02 01:45:05 pm                                       *
- * Modified By: Mathieu Escouteloup                                            *
+ * Last Modified: 2023-03-03 02:34:33 pm
+ * Modified By: Mathieu Escouteloup
  * -----                                                                       *
  * License: See LICENSE.md                                                     *
  * Copyright (c) 2023 HerdWare                                                *
@@ -20,6 +20,7 @@ import chisel3.util._
 import chisel3.experimental.ChiselEnum
 
 import herd.common.gen._
+import herd.common.core.{HpcCacheBus}
 import herd.common.tools._
 import herd.common.field._
 import herd.common.mem.mb4s._
@@ -50,6 +51,7 @@ class AccStage (p: PrevUnitParams) extends Module {
 
     val b_next = new NextCtrlIO(p, p.nHart)
     val o_miss = Output(new MissBus(p, p.nHart))
+    val o_hpc = Output(Vec(p.nHart, new HpcCacheBus()))
 
     val b_dep = if (p.useAccReg) Some(Vec(p.nFieldSlct, new DependStageIO(p))) else None
     val o_pend = if (p.useAccReg) Some(Output(Vec(p.nFieldSlct, new CachePendBus(p)))) else None
@@ -369,6 +371,18 @@ class AccStage (p: PrevUnitParams) extends Module {
   r_miss.addr := io.b_in.ctrl.get.addr
 
   io.o_miss := r_miss
+
+  // ******************************
+  //             HPC
+  // ******************************
+  io.o_hpc := 0.U.asTypeOf(io.o_hpc)
+  for (h <- 0 until p.nHart) {
+    when ((h.U === io.b_in.ctrl.get.info.hart) & ~w_wait_reg & ~w_wait_next) {
+      io.o_hpc(h).hit := (w_cfsm === s0NEW) & io.b_in.valid & io.b_acc.ready & io.b_acc.found
+      if (p.usePftch) io.o_hpc(h).pftch := (w_cfsm === s0NEW) & io.b_in.valid & w_pftch_ready & w_pftch_found
+      io.o_hpc(h).miss := (w_cfsm === s0NEW) & io.b_in.valid & w_data_miss
+    }
+  }
 
   // ******************************
   //            CBO
