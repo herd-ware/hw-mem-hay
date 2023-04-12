@@ -1,10 +1,10 @@
 /*
- * File: prev.scala
+ * File: prev.scala                                                            *
  * Created Date: 2023-02-25 04:11:31 pm                                        *
  * Author: Mathieu Escouteloup                                                 *
  * -----                                                                       *
- * Last Modified: 2023-03-03 02:32:24 pm
- * Modified By: Mathieu Escouteloup
+ * Last Modified: 2023-04-11 05:54:44 pm                                       *
+ * Modified By: Mathieu Escouteloup                                            *
  * -----                                                                       *
  * License: See LICENSE.md                                                     *
  * Copyright (c) 2023 HerdWare                                                *
@@ -158,20 +158,13 @@ class Prev (p: PrevParams) extends Module {
       pa = pa + p.pPrev(pp).nPendingAcc
     }
     
+    io.o_hpc := 0.U.asTypeOf(io.o_hpc) 
     for (h <- 0 until p.nHart) {
-      val w_hpc_hit = Wire(Vec(p.nPrevPort, Bool()))
-      val w_hpc_pftch = Wire(Vec(p.nPrevPort, Bool()))
-      val w_hpc_miss = Wire(Vec(p.nPrevPort, Bool()))
-
       for (pp <- 0 until p.nPrevPort) {
-        w_hpc_hit(pp) := m_unit(pp).io.o_hpc(h).hit.orR
-        w_hpc_pftch(pp) := m_unit(pp).io.o_hpc(h).pftch.orR
-        w_hpc_miss(pp) := m_unit(pp).io.o_hpc(h).miss.orR
+        io.o_hpc(h).hit(pp) := m_unit(pp).io.o_hpc(h).hit(0)
+        io.o_hpc(h).pftch(pp) := m_unit(pp).io.o_hpc(h).pftch(0)
+        io.o_hpc(h).miss(pp) := m_unit(pp).io.o_hpc(h).miss(0)
       }
-
-      io.o_hpc(h).hit := PopCount(w_hpc_hit.asUInt)
-      io.o_hpc(h).pftch := PopCount(w_hpc_pftch.asUInt)
-      io.o_hpc(h).miss := PopCount(w_hpc_miss.asUInt)
     }
   }
 
