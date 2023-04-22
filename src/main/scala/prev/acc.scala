@@ -1,10 +1,10 @@
 /*
- * File: acc.scala
+ * File: acc.scala                                                             *
  * Created Date: 2023-02-25 04:11:31 pm                                        *
  * Author: Mathieu Escouteloup                                                 *
  * -----                                                                       *
- * Last Modified: 2023-03-03 02:34:33 pm
- * Modified By: Mathieu Escouteloup
+ * Last Modified: 2023-04-11 05:52:54 pm                                       *
+ * Modified By: Mathieu Escouteloup                                            *
  * -----                                                                       *
  * License: See LICENSE.md                                                     *
  * Copyright (c) 2023 HerdWare                                                *
@@ -378,9 +378,9 @@ class AccStage (p: PrevUnitParams) extends Module {
   io.o_hpc := 0.U.asTypeOf(io.o_hpc)
   for (h <- 0 until p.nHart) {
     when ((h.U === io.b_in.ctrl.get.info.hart) & ~w_wait_reg & ~w_wait_next) {
-      io.o_hpc(h).hit := (w_cfsm === s0NEW) & io.b_in.valid & io.b_acc.ready & io.b_acc.found
-      if (p.usePftch) io.o_hpc(h).pftch := (w_cfsm === s0NEW) & io.b_in.valid & w_pftch_ready & w_pftch_found
-      io.o_hpc(h).miss := (w_cfsm === s0NEW) & io.b_in.valid & w_data_miss
+      io.o_hpc(h).hit(0) := (w_cfsm === s0NEW) & io.b_in.valid & io.b_acc.ready & io.b_acc.found
+      if (p.usePftch) io.o_hpc(h).pftch(0) := (w_cfsm === s0NEW) & io.b_in.valid & w_pftch_ready & w_pftch_found
+      io.o_hpc(h).miss(0) := (w_cfsm === s0NEW) & io.b_in.valid & w_data_miss
     }
   }
 
